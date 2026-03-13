@@ -1,0 +1,1471 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Calorie Tracker" />
+  <meta name="theme-color" content="#667eea" />
+  <title>Calorie Tracker</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      font-family: Arial, sans-serif;
+    }
+
+    body {
+      margin: 0;
+      padding: 16px;
+      padding-bottom: env(safe-area-inset-bottom);
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      min-height: -webkit-fill-available;
+      color: #222;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .container {
+      max-width: 500px;
+      margin: 0 auto;
+      background: #fff;
+      padding: 20px;
+      padding-bottom: max(20px, env(safe-area-inset-bottom));
+      border-radius: 16px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+      backdrop-filter: blur(10px);
+      -webkit-overflow-scrolling: touch;
+    }
+
+    @media (max-width: 600px) {
+      body {
+        padding: 8px;
+      }
+      
+      .container {
+        padding: 16px;
+        border-radius: 12px;
+      }
+    }
+
+    h1, h2 {
+      margin-top: 0;
+    }
+
+    .date {
+      color: #666;
+      margin-bottom: 20px;
+    }
+
+    .block {
+      margin-bottom: 20px;
+      padding: 14px;
+      border: 1px solid #e6e6e6;
+      border-radius: 12px;
+      background: #fafafa;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: bold;
+    }
+
+    input {
+      width: 100%;
+      padding: 12px;
+      border: 1px solid #ccc;
+      border-radius: 10px;
+      font-size: 16px;
+      margin-bottom: 10px;
+      -webkit-appearance: none;
+      appearance: none;
+    }
+
+    input[type="number"] {
+      -webkit-appearance: textfield;
+      appearance: textfield;
+    }
+
+    input[type="number"]::-webkit-inner-spin-button,
+    input[type="number"]::-webkit-outer-spin-button {
+      -webkit-appearance: none;
+      appearance: none;
+    }
+
+    button {
+      width: 100%;
+      padding: 12px;
+      border: none;
+      border-radius: 10px;
+      font-size: 16px;
+      cursor: pointer;
+      background: #222;
+      color: white;
+      margin-top: 6px;
+      -webkit-tap-highlight-color: rgba(0, 0, 0, 0.1);
+      touch-action: manipulation;
+    }
+
+    button:hover {
+      opacity: 0.95;
+    }
+
+    .stats p {
+      margin: 8px 0;
+      font-size: 18px;
+    }
+
+    .remaining {
+      font-weight: bold;
+      font-size: 22px;
+    }
+
+    .negative {
+      color: #c62828;
+    }
+
+    .positive {
+      color: #2e7d32;
+    }
+
+    ul {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+
+    li {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 0;
+      border-bottom: 1px solid #ececec;
+    }
+
+    .entry-left {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .entry-time {
+      font-size: 12px;
+      color: #777;
+    }
+
+    .delete-btn {
+      width: auto;
+      padding: 8px 12px;
+      background: #d32f2f;
+      margin: 0;
+    }
+
+    .empty {
+      color: #777;
+      font-style: italic;
+    }
+
+    .hint {
+      font-size: 13px;
+      color: #666;
+      margin-top: 8px;
+    }
+
+    .progress-bar {
+      width: 100%;
+      height: 24px;
+      background: #e0e0e0;
+      border-radius: 12px;
+      overflow: hidden;
+      margin: 12px 0;
+      position: relative;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #2e7d32 0%, #4caf50 100%);
+      transition: width 0.3s ease;
+      border-radius: 12px;
+    }
+
+    .progress-fill.over-limit {
+      background: linear-gradient(90deg, #c62828 0%, #f44336 100%);
+    }
+
+    .progress-text {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 12px;
+      font-weight: bold;
+      color: #222;
+      z-index: 1;
+    }
+
+    .chart-container {
+      margin-top: 16px;
+    }
+
+    .chart-title {
+      font-size: 14px;
+      color: #666;
+      margin-bottom: 12px;
+    }
+
+    .chart-bars-container {
+      position: relative;
+      height: 120px;
+      padding: 8px 0;
+    }
+
+    .chart-bars {
+      display: flex;
+      align-items: flex-end;
+      gap: 6px;
+      height: 100%;
+      position: relative;
+      z-index: 2;
+      min-height: 0;
+    }
+
+    .chart-limit-line {
+      position: absolute;
+      left: 0;
+      right: 0;
+      height: 0;
+      border-top: 2px dashed #222;
+      z-index: 1;
+      opacity: 0.9;
+      box-shadow: 0 0 2px rgba(0, 0, 0, 0.3);
+      background: transparent;
+    }
+
+    .chart-limit-line::before {
+      content: 'Daily Limit';
+      position: absolute;
+      right: 0;
+      bottom: -14px;
+      font-size: 9px;
+      color: #222;
+      font-weight: bold;
+      background: rgba(255, 255, 255, 0.9);
+      padding: 2px 4px;
+      border-radius: 3px;
+    }
+
+    .chart-limit-value {
+      position: absolute;
+      right: 0;
+      bottom: 4px;
+      font-size: 9px;
+      color: #222;
+      font-weight: bold;
+      background: rgba(255, 255, 255, 0.9);
+      padding: 2px 4px;
+      border-radius: 3px;
+    }
+
+    .chart-bar-wrapper {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      height: 100%;
+    }
+
+    .chart-bar-container {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: flex-end;
+      min-height: 0;
+    }
+
+    .chart-bar {
+      width: 100%;
+      background: #4caf50;
+      border-radius: 4px 4px 0 0;
+      min-height: 2px;
+      transition: height 0.3s ease;
+      position: relative;
+      flex-shrink: 0;
+    }
+
+    .chart-bar.over-limit {
+      background: #f44336;
+    }
+
+    .chart-label {
+      font-size: 10px;
+      color: #777;
+      text-align: center;
+    }
+
+    .chart-value {
+      font-size: 9px;
+      color: #555;
+      margin-top: 2px;
+    }
+
+    .tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 20px;
+      border-bottom: 2px solid #e6e6e6;
+    }
+
+    .tab {
+      padding: 10px 20px;
+      background: none;
+      border: none;
+      border-bottom: 2px solid transparent;
+      cursor: pointer;
+      font-size: 16px;
+      color: #666;
+      margin: 0;
+      width: auto;
+      transition: all 0.2s ease;
+    }
+
+    .tab:hover {
+      color: #222;
+    }
+
+    .tab.active {
+      color: #222;
+      border-bottom-color: #222;
+      font-weight: bold;
+    }
+
+    .tab-content {
+      display: none;
+    }
+
+    .tab-content.active {
+      display: block;
+    }
+
+    .weekly-stats-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 12px;
+    }
+
+    .weekly-stats-table th,
+    .weekly-stats-table td {
+      padding: 10px;
+      text-align: left;
+      border-bottom: 1px solid #e6e6e6;
+    }
+
+    .weekly-stats-table th {
+      background: #fafafa;
+      font-weight: bold;
+      color: #222;
+    }
+
+    .weekly-stats-table tr:hover {
+      background: #f9f9f9;
+    }
+
+    .week-label {
+      font-weight: bold;
+      color: #222;
+    }
+
+    .stat-value {
+      font-size: 16px;
+    }
+
+    .stat-diff {
+      font-size: 14px;
+      font-weight: bold;
+    }
+
+    .stat-diff.positive {
+      color: #2e7d32;
+    }
+
+    .stat-diff.negative {
+      color: #c62828;
+    }
+
+    .weekly-stats-row.hidden {
+      display: none;
+    }
+
+    .show-more-btn {
+      width: 100%;
+      margin-top: 12px;
+      background: #666;
+    }
+
+    .mode-btn {
+      transition: all 0.2s ease;
+    }
+
+    .mode-btn.active {
+      background: #222 !important;
+      color: white !important;
+    }
+
+    .mode-btn:not(.active) {
+      background: #e0e0e0 !important;
+      color: #222 !important;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Daily Calories</h1>
+    <div class="date" id="todayDate"></div>
+
+    <div class="tabs">
+      <button class="tab active" data-tab="today">Today</button>
+      <button class="tab" data-tab="statistics">Statistics</button>
+      <button class="tab" data-tab="products">Products</button>
+    </div>
+
+    <div id="todayTab" class="tab-content active">
+      <div class="block">
+        <label>Daily Calorie Limit</label>
+        <div id="limitDisplay" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+          <span style="font-size: 18px;"><strong id="limitDisplayValue">0</strong> kcal</span>
+          <button id="editLimitBtn" style="width: auto; padding: 8px 16px; margin: 0;">Edit</button>
+        </div>
+        <div id="limitEdit" style="display: none;">
+          <input type="number" id="limitInput" placeholder="e.g. 2200" min="0" />
+          <button id="saveLimitBtn">Save Limit</button>
+        </div>
+      </div>
+
+      <div class="block">
+        <label for="calorieInput">Add Calories</label>
+        <div style="display: flex; gap: 8px; margin-bottom: 10px;">
+          <button id="modeDirectBtn" class="mode-btn active" style="flex: 1; padding: 8px; background: #222; color: white; border: none; border-radius: 8px; cursor: pointer;">Direct</button>
+          <button id="modePiecesBtn" class="mode-btn" style="flex: 1; padding: 8px; background: #e0e0e0; color: #222; border: none; border-radius: 8px; cursor: pointer;">Pieces</button>
+          <button id="modeWeightBtn" class="mode-btn" style="flex: 1; padding: 8px; background: #e0e0e0; color: #222; border: none; border-radius: 8px; cursor: pointer;">Weight (g)</button>
+        </div>
+        <select id="productSelect" style="width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 10px; font-size: 16px; margin-bottom: 10px; display: none;">
+          <option value="">Select a product...</option>
+        </select>
+        <input type="number" id="calorieInput" placeholder="e.g. 150" min="1" />
+        <div id="calorieModeHint" class="hint" style="margin-top: 4px;">Enter calories directly</div>
+        <button id="addEntryBtn">Add</button>
+        <div class="hint">You can press Enter in the field.</div>
+      </div>
+
+      <div class="block stats">
+        <h2>Today</h2>
+        <p>Limit: <strong id="limitValue">0</strong></p>
+        <p>Consumed: <strong id="consumedValue">0</strong></p>
+        <div class="progress-bar">
+          <div class="progress-fill" id="progressFill"></div>
+          <div class="progress-text" id="progressText">0%</div>
+        </div>
+        <p class="remaining">Remaining: <span id="remainingValue" class="positive">0</span></p>
+      </div>
+
+      <div class="block">
+        <h2>Today's Entries</h2>
+        <ul id="entriesList"></ul>
+        <p id="emptyMessage" class="empty">No entries yet.</p>
+      </div>
+    </div>
+
+    <div id="statisticsTab" class="tab-content">
+      <div class="block chart-container">
+        <h2>Last 7 Days</h2>
+        <div class="chart-bars-container">
+          <div class="chart-limit-line" id="chartLimitLine">
+            <span class="chart-limit-value" id="chartLimitValue"></span>
+          </div>
+          <div class="chart-bars" id="chartBars"></div>
+        </div>
+      </div>
+
+      <div class="block">
+        <h2>Weekly Statistics</h2>
+        <div id="weeklyStats"></div>
+      </div>
+
+      <div class="block">
+        <h2>Monthly Statistics</h2>
+        <div id="monthlyStats"></div>
+      </div>
+    </div>
+
+    <div id="productsTab" class="tab-content">
+      <div class="block">
+        <label for="productNameInput">Product Name</label>
+        <input type="text" id="productNameInput" placeholder="e.g. Apple" />
+        <label style="margin-top: 10px;">Product Type</label>
+        <div style="display: flex; gap: 8px; margin-bottom: 10px;">
+          <button id="productTypePieceBtn" class="mode-btn active" style="flex: 1; padding: 8px; background: #222; color: white; border: none; border-radius: 8px; cursor: pointer;">By Piece</button>
+          <button id="productTypeWeightBtn" class="mode-btn" style="flex: 1; padding: 8px; background: #e0e0e0; color: #222; border: none; border-radius: 8px; cursor: pointer;">By Weight</button>
+        </div>
+        <div id="productCaloriesContainer">
+          <label for="productCaloriesInput">Calories per piece</label>
+          <input type="number" id="productCaloriesInput" placeholder="e.g. 70" min="0" />
+        </div>
+        <button id="addProductBtn">Add Product</button>
+        <div class="hint">You can press Enter in the field.</div>
+      </div>
+
+      <div class="block">
+        <h2>My Products</h2>
+        <ul id="productsList"></ul>
+        <p id="productsEmptyMessage" class="empty">No products yet.</p>
+      </div>
+    </div>
+
+    <div id="quickAddModal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center;">
+      <div style="background: white; padding: 24px; border-radius: 16px; max-width: 400px; width: 90%;">
+        <h3 id="quickAddProductName" style="margin-top: 0;"></h3>
+        <div id="quickAddInputContainer"></div>
+        <div style="display: flex; gap: 10px; margin-top: 16px;">
+          <button id="quickAddConfirmBtn" style="flex: 1; padding: 12px; background: #222; color: white; border: none; border-radius: 10px; cursor: pointer;">Add</button>
+          <button id="quickAddCancelBtn" style="flex: 1; padding: 12px; background: #e0e0e0; color: #222; border: none; border-radius: 10px; cursor: pointer;">Cancel</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const STORAGE_KEY = "calorie_tracker_data";
+
+    function getTodayKey() {
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = String(now.getMonth() + 1).padStart(2, "0");
+      const day = String(now.getDate()).padStart(2, "0");
+      return `${year}-${month}-${day}`;
+    }
+
+    function formatToday() {
+      const now = new Date();
+      return now.toLocaleDateString("en-US", {
+        weekday: "long",
+        year: "numeric",
+        month: "long",
+        day: "numeric"
+      });
+    }
+
+    function formatTime(timestamp) {
+      return new Date(timestamp).toLocaleTimeString("en-US", {
+        hour: "2-digit",
+        minute: "2-digit"
+      });
+    }
+
+    function loadData() {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) {
+        return {
+          dailyLimit: 2000,
+          days: {},
+          products: []
+        };
+      }
+
+      try {
+        const parsed = JSON.parse(raw);
+        const data = {
+          dailyLimit: parsed.dailyLimit ?? 2000,
+          days: parsed.days ?? {},
+          products: parsed.products ?? []
+        };
+        cleanOldData(data);
+        if (Object.keys(data.days).length !== Object.keys(parsed.days ?? {}).length) {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+        }
+        return data;
+      } catch (e) {
+        return {
+          dailyLimit: 2000,
+          days: {},
+          products: []
+        };
+      }
+    }
+
+    function saveData(data) {
+      cleanOldData(data);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    }
+
+    function getWeekKey(date) {
+      const d = new Date(date);
+      d.setHours(0, 0, 0, 0);
+      const dayOfWeek = d.getDay();
+      const diff = d.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1);
+      const weekStart = new Date(d.setDate(diff));
+      const year = weekStart.getFullYear();
+      const jan1 = new Date(year, 0, 1);
+      const daysSinceJan1 = Math.floor((weekStart - jan1) / (24 * 60 * 60 * 1000));
+      const weekNum = Math.ceil((daysSinceJan1 + jan1.getDay() + 1) / 7);
+      return `${year}-W${String(weekNum).padStart(2, "0")}`;
+    }
+
+    function getWeekStart(date) {
+      const d = new Date(date);
+      d.setHours(0, 0, 0, 0);
+      const dayOfWeek = d.getDay();
+      const diff = d.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1);
+      return new Date(d.setDate(diff));
+    }
+
+    function cleanOldData(data) {
+      const twelveMonthsAgo = new Date();
+      twelveMonthsAgo.setMonth(twelveMonthsAgo.getMonth() - 12);
+      const year = twelveMonthsAgo.getFullYear();
+      const month = String(twelveMonthsAgo.getMonth() + 1).padStart(2, "0");
+      const day = String(twelveMonthsAgo.getDate()).padStart(2, "0");
+      const cutoffKey = `${year}-${month}-${day}`;
+
+      const keysToDelete = [];
+      for (const key in data.days) {
+        if (key < cutoffKey) {
+          keysToDelete.push(key);
+        }
+      }
+
+      keysToDelete.forEach(key => {
+        delete data.days[key];
+      });
+    }
+
+    function calculateWeeklyStats(data) {
+      const weeklyData = {};
+
+      for (const dateKey in data.days) {
+        const date = new Date(dateKey + "T00:00:00");
+        const weekKey = getWeekKey(date);
+        const consumed = calculateConsumed(data.days[dateKey].entries);
+
+        if (!weeklyData[weekKey]) {
+          weeklyData[weekKey] = {
+            weekStart: getWeekStart(date),
+            consumed: 0,
+            daysCount: 0
+          };
+        }
+
+        weeklyData[weekKey].consumed += consumed;
+        weeklyData[weekKey].daysCount++;
+      }
+
+      const weeks = Object.keys(weeklyData)
+        .map(key => ({
+          key,
+          ...weeklyData[key],
+          weekLimit: data.dailyLimit * 7
+        }))
+        .sort((a, b) => b.key.localeCompare(a.key));
+
+      return weeks;
+    }
+
+    function formatWeekRange(weekStart) {
+      const weekEnd = new Date(weekStart);
+      weekEnd.setDate(weekEnd.getDate() + 6);
+      return weekStart.toLocaleDateString("en-US", { month: "short", day: "numeric" }) +
+        " - " +
+        weekEnd.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+    }
+
+    function getMonthKey(date) {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, "0");
+      return `${year}-${month}`;
+    }
+
+    function getMonthStart(date) {
+      return new Date(date.getFullYear(), date.getMonth(), 1);
+    }
+
+    function getDaysInMonth(year, month) {
+      return new Date(year, month + 1, 0).getDate();
+    }
+
+    function calculateMonthlyStats(data) {
+      const monthlyData = {};
+
+      for (const dateKey in data.days) {
+        const date = new Date(dateKey + "T00:00:00");
+        const monthKey = getMonthKey(date);
+        const consumed = calculateConsumed(data.days[dateKey].entries);
+
+        if (!monthlyData[monthKey]) {
+          monthlyData[monthKey] = {
+            monthStart: getMonthStart(date),
+            consumed: 0,
+            daysCount: 0
+          };
+        }
+
+        monthlyData[monthKey].consumed += consumed;
+        monthlyData[monthKey].daysCount++;
+      }
+
+      const months = Object.keys(monthlyData)
+        .map(key => {
+          const monthStart = monthlyData[key].monthStart;
+          const daysInMonth = getDaysInMonth(monthStart.getFullYear(), monthStart.getMonth());
+          return {
+            key,
+            ...monthlyData[key],
+            monthLimit: data.dailyLimit * daysInMonth
+          };
+        })
+        .sort((a, b) => b.key.localeCompare(a.key))
+        .slice(0, 12);
+
+      return months;
+    }
+
+    function formatMonthRange(monthStart) {
+      return monthStart.toLocaleDateString("en-US", { month: "long", year: "numeric" });
+    }
+
+    function renderMonthlyStats() {
+      const data = loadData();
+      const months = calculateMonthlyStats(data);
+      const container = document.getElementById("monthlyStats");
+
+      if (months.length === 0) {
+        container.innerHTML = "<p class='empty'>No monthly data available.</p>";
+        return;
+      }
+
+      const visibleMonths = 3;
+      const hasMore = months.length > visibleMonths;
+
+      let html = "<table class='weekly-stats-table'><thead><tr>";
+      html += "<th>Month</th>";
+      html += "<th>Monthly Limit</th>";
+      html += "<th>Consumed</th>";
+      html += "<th>Difference</th>";
+      html += "</tr></thead><tbody>";
+
+      months.forEach((month, index) => {
+        const diff = month.consumed - month.monthLimit;
+        const diffClass = diff > 0 ? "negative" : "positive";
+        const diffSign = diff > 0 ? "+" : "";
+        const isHidden = index >= visibleMonths ? "hidden" : "";
+
+        html += `<tr class="weekly-stats-row ${isHidden}">`;
+        html += `<td class="week-label">${formatMonthRange(month.monthStart)}</td>`;
+        html += `<td class="stat-value">${month.monthLimit} kcal</td>`;
+        html += `<td class="stat-value">${month.consumed} kcal</td>`;
+        html += `<td class="stat-diff ${diffClass}">${diffSign}${diff} kcal</td>`;
+        html += "</tr>";
+      });
+
+      html += "</tbody></table>";
+
+      if (hasMore) {
+        html += `<button class="show-more-btn" id="showMoreMonthsBtn">Show More (${months.length - visibleMonths} months)</button>`;
+      }
+
+      container.innerHTML = html;
+
+      if (hasMore) {
+        const showMoreBtn = document.getElementById("showMoreMonthsBtn");
+        let isExpanded = false;
+        showMoreBtn.addEventListener("click", function() {
+          const hiddenRows = container.querySelectorAll(".weekly-stats-row.hidden");
+          if (isExpanded) {
+            hiddenRows.forEach(row => row.classList.add("hidden"));
+            showMoreBtn.textContent = `Show More (${months.length - visibleMonths} months)`;
+            isExpanded = false;
+          } else {
+            hiddenRows.forEach(row => row.classList.remove("hidden"));
+            showMoreBtn.textContent = "Show Less";
+            isExpanded = true;
+          }
+        });
+      }
+    }
+
+    function renderWeeklyStats() {
+      const data = loadData();
+      const weeks = calculateWeeklyStats(data);
+      const container = document.getElementById("weeklyStats");
+
+      if (weeks.length === 0) {
+        container.innerHTML = "<p class='empty'>No weekly data available.</p>";
+        return;
+      }
+
+      const visibleWeeks = weeks.slice(0, 4);
+
+      let html = "<table class='weekly-stats-table'><thead><tr>";
+      html += "<th>Week</th>";
+      html += "<th>Weekly Limit</th>";
+      html += "<th>Consumed</th>";
+      html += "<th>Difference</th>";
+      html += "</tr></thead><tbody>";
+
+      visibleWeeks.forEach(week => {
+        const diff = week.consumed - week.weekLimit;
+        const diffClass = diff > 0 ? "negative" : "positive";
+        const diffSign = diff > 0 ? "+" : "";
+
+        html += "<tr>";
+        html += `<td class="week-label">${formatWeekRange(week.weekStart)}</td>`;
+        html += `<td class="stat-value">${week.weekLimit} kcal</td>`;
+        html += `<td class="stat-value">${week.consumed} kcal</td>`;
+        html += `<td class="stat-diff ${diffClass}">${diffSign}${diff} kcal</td>`;
+        html += "</tr>";
+      });
+
+      html += "</tbody></table>";
+      container.innerHTML = html;
+    }
+
+
+    function ensureTodayExists(data) {
+      const today = getTodayKey();
+      if (!data.days[today]) {
+        data.days[today] = {
+          entries: []
+        };
+      }
+    }
+
+    function calculateConsumed(entries) {
+      return entries.reduce((sum, entry) => sum + entry.calories, 0);
+    }
+
+    function getDateKey(date) {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, "0");
+      const day = String(date.getDate()).padStart(2, "0");
+      return `${year}-${month}-${day}`;
+    }
+
+    function formatShortDate(date) {
+      return date.toLocaleDateString("en-US", { weekday: "short", day: "numeric" });
+    }
+
+    function renderChart() {
+      const data = loadData();
+      const chartBars = document.getElementById("chartBars");
+      chartBars.innerHTML = "";
+
+      const days = [];
+      for (let i = 6; i >= 0; i--) {
+        const date = new Date();
+        date.setDate(date.getDate() - i);
+        const key = getDateKey(date);
+        const dayData = data.days[key];
+        const consumed = dayData ? calculateConsumed(dayData.entries) : 0;
+        days.push({ date, key, consumed, limit: data.dailyLimit });
+      }
+
+      const maxConsumed = Math.max(...days.map(d => d.consumed), 0);
+      const maxValue = Math.max(maxConsumed, data.dailyLimit || 0);
+
+      const limitLine = document.getElementById("chartLimitLine");
+      const limitValue = document.getElementById("chartLimitValue");
+      if (data.dailyLimit > 0 && maxValue > 0) {
+        const limitPercent = (data.dailyLimit / maxValue) * 100;
+        const limitPosition = 100 - limitPercent;
+        limitLine.style.top = `${limitPosition}%`;
+        limitLine.style.bottom = "auto";
+        limitValue.textContent = `${data.dailyLimit} kcal`;
+        limitLine.style.display = "block";
+      } else {
+        limitLine.style.display = "none";
+      }
+
+      days.forEach(day => {
+        const wrapper = document.createElement("div");
+        wrapper.className = "chart-bar-wrapper";
+
+        const barContainer = document.createElement("div");
+        barContainer.className = "chart-bar-container";
+
+        const heightPercent = maxValue > 0 ? (day.consumed / maxValue) * 100 : 0;
+        
+        const bar = document.createElement("div");
+        bar.className = "chart-bar";
+        
+        if (day.consumed > day.limit) {
+          bar.classList.add("over-limit");
+        }
+        
+        bar.style.height = `${heightPercent}%`;
+        bar.style.minHeight = heightPercent > 0 ? "2px" : "0";
+
+        barContainer.appendChild(bar);
+
+        const value = document.createElement("div");
+        value.className = "chart-value";
+        value.textContent = day.consumed > 0 ? day.consumed : "";
+
+        const label = document.createElement("div");
+        label.className = "chart-label";
+        label.textContent = formatShortDate(day.date);
+
+        wrapper.appendChild(barContainer);
+        wrapper.appendChild(value);
+        wrapper.appendChild(label);
+        chartBars.appendChild(wrapper);
+      });
+    }
+
+    function render() {
+      const data = loadData();
+      ensureTodayExists(data);
+      saveData(data);
+
+      const today = getTodayKey();
+      const todayData = data.days[today];
+      const entries = todayData.entries;
+      const consumed = calculateConsumed(entries);
+      const remaining = data.dailyLimit - consumed;
+
+      document.getElementById("todayDate").textContent = formatToday();
+      document.getElementById("limitInput").value = data.dailyLimit;
+      document.getElementById("limitDisplayValue").textContent = data.dailyLimit;
+      document.getElementById("limitValue").textContent = data.dailyLimit;
+      document.getElementById("consumedValue").textContent = consumed;
+
+      const remainingElement = document.getElementById("remainingValue");
+      remainingElement.textContent = remaining;
+      remainingElement.className = remaining < 0 ? "negative" : "positive";
+
+      const progressFill = document.getElementById("progressFill");
+      const progressText = document.getElementById("progressText");
+      const percent = data.dailyLimit > 0 ? Math.min((consumed / data.dailyLimit) * 100, 100) : 0;
+      progressFill.style.width = `${percent}%`;
+      progressFill.className = consumed > data.dailyLimit ? "progress-fill over-limit" : "progress-fill";
+      progressText.textContent = `${Math.round(percent)}%`;
+
+      renderChart();
+
+      const entriesList = document.getElementById("entriesList");
+      const emptyMessage = document.getElementById("emptyMessage");
+      entriesList.innerHTML = "";
+
+      if (entries.length === 0) {
+        emptyMessage.style.display = "block";
+      } else {
+        emptyMessage.style.display = "none";
+
+        entries.forEach((entry, index) => {
+          const li = document.createElement("li");
+
+          const left = document.createElement("div");
+          left.className = "entry-left";
+
+          const caloriesText = document.createElement("strong");
+          caloriesText.textContent = `${entry.calories} kcal`;
+
+          const timeText = document.createElement("span");
+          timeText.className = "entry-time";
+          timeText.textContent = formatTime(entry.createdAt);
+
+          left.appendChild(caloriesText);
+          left.appendChild(timeText);
+
+          const deleteBtn = document.createElement("button");
+          deleteBtn.className = "delete-btn";
+          deleteBtn.textContent = "Delete";
+          deleteBtn.onclick = () => deleteEntry(index);
+
+          li.appendChild(left);
+          li.appendChild(deleteBtn);
+          entriesList.appendChild(li);
+        });
+      }
+    }
+
+    function showEditLimit() {
+      document.getElementById("limitDisplay").style.display = "none";
+      document.getElementById("limitEdit").style.display = "block";
+      document.getElementById("limitInput").focus();
+    }
+
+    function hideEditLimit() {
+      document.getElementById("limitDisplay").style.display = "flex";
+      document.getElementById("limitEdit").style.display = "none";
+    }
+
+    function saveLimit() {
+      const value = Number(document.getElementById("limitInput").value);
+      if (!Number.isFinite(value) || value < 0) {
+        alert("Enter a valid limit.");
+        return;
+      }
+
+      const data = loadData();
+      data.dailyLimit = value;
+      ensureTodayExists(data);
+      saveData(data);
+      hideEditLimit();
+      render();
+    }
+
+    let calorieMode = "direct";
+
+    function updateProductSelect() {
+      const data = loadData();
+      const productSelect = document.getElementById("productSelect");
+      productSelect.innerHTML = '<option value="">Select a product...</option>';
+      
+      data.products.forEach((product, index) => {
+        const option = document.createElement("option");
+        option.value = index;
+        if (product.type === "piece") {
+          option.textContent = `${product.name} (${product.caloriesPerPiece} kcal/piece)`;
+        } else {
+          option.textContent = `${product.name} (${product.caloriesPer100g} kcal/100g)`;
+        }
+        productSelect.appendChild(option);
+      });
+    }
+
+    function setCalorieMode(mode) {
+      calorieMode = mode;
+      const directBtn = document.getElementById("modeDirectBtn");
+      const piecesBtn = document.getElementById("modePiecesBtn");
+      const weightBtn = document.getElementById("modeWeightBtn");
+      const input = document.getElementById("calorieInput");
+      const productSelect = document.getElementById("productSelect");
+      const hint = document.getElementById("calorieModeHint");
+
+      directBtn.classList.remove("active");
+      piecesBtn.classList.remove("active");
+      weightBtn.classList.remove("active");
+
+      if (mode === "direct") {
+        directBtn.classList.add("active");
+        productSelect.style.display = "none";
+        input.placeholder = "e.g. 150";
+        hint.textContent = "Enter calories directly";
+      } else if (mode === "pieces") {
+        piecesBtn.classList.add("active");
+        productSelect.style.display = "block";
+        updateProductSelect();
+        input.placeholder = "e.g. 2";
+        hint.textContent = "Select product and enter number of pieces";
+      } else if (mode === "weight") {
+        weightBtn.classList.add("active");
+        productSelect.style.display = "block";
+        updateProductSelect();
+        input.placeholder = "e.g. 150";
+        hint.textContent = "Select product and enter weight in grams";
+      }
+    }
+
+    function addEntry() {
+      const input = document.getElementById("calorieInput");
+      const productSelect = document.getElementById("productSelect");
+      const value = Number(input.value);
+
+      if (!Number.isFinite(value) || value <= 0) {
+        alert("Enter a valid number.");
+        return;
+      }
+
+      let calories = value;
+
+      if (calorieMode === "pieces") {
+        if (!productSelect.value) {
+          alert("Please select a product.");
+          return;
+        }
+        const data = loadData();
+        const product = data.products[Number(productSelect.value)];
+        if (!product) {
+          alert("Product not found.");
+          return;
+        }
+        if (product.type !== "piece") {
+          alert("This product is by weight, not by piece.");
+          return;
+        }
+        calories = product.caloriesPerPiece * value;
+      } else if (calorieMode === "weight") {
+        if (!productSelect.value) {
+          alert("Please select a product.");
+          return;
+        }
+        const data = loadData();
+        const product = data.products[Number(productSelect.value)];
+        if (!product) {
+          alert("Product not found.");
+          return;
+        }
+        if (product.type !== "weight") {
+          alert("This product is by piece, not by weight.");
+          return;
+        }
+        calories = (product.caloriesPer100g / 100) * value;
+      }
+
+      const data = loadData();
+      ensureTodayExists(data);
+
+      const today = getTodayKey();
+      data.days[today].entries.push({
+        calories: Math.round(calories),
+        createdAt: Date.now()
+      });
+
+      saveData(data);
+      input.value = "";
+      productSelect.value = "";
+      render();
+    }
+
+    function deleteEntry(index) {
+      const data = loadData();
+      ensureTodayExists(data);
+
+      const today = getTodayKey();
+      data.days[today].entries.splice(index, 1);
+
+      saveData(data);
+      render();
+    }
+
+    function switchTab(tabName) {
+      document.querySelectorAll(".tab").forEach(tab => {
+        tab.classList.remove("active");
+      });
+      document.querySelectorAll(".tab-content").forEach(content => {
+        content.classList.remove("active");
+      });
+
+      document.querySelector(`[data-tab="${tabName}"]`).classList.add("active");
+      document.getElementById(`${tabName}Tab`).classList.add("active");
+
+      if (tabName === "statistics") {
+        renderChart();
+        renderWeeklyStats();
+        renderMonthlyStats();
+      } else if (tabName === "products") {
+        renderProducts();
+      } else if (tabName === "today") {
+        updateProductSelect();
+      }
+    }
+
+    function renderProducts() {
+      const data = loadData();
+      const productsList = document.getElementById("productsList");
+      const emptyMessage = document.getElementById("productsEmptyMessage");
+      productsList.innerHTML = "";
+
+      if (data.products.length === 0) {
+        emptyMessage.style.display = "block";
+      } else {
+        emptyMessage.style.display = "none";
+
+        data.products.forEach((product, index) => {
+          const li = document.createElement("li");
+          li.style.display = "flex";
+          li.style.justifyContent = "space-between";
+          li.style.alignItems = "center";
+          li.style.padding = "10px 0";
+          li.style.borderBottom = "1px solid #ececec";
+
+          const productInfo = document.createElement("div");
+          productInfo.style.display = "flex";
+          productInfo.style.flexDirection = "column";
+          productInfo.style.gap = "4px";
+          productInfo.style.flex = "1";
+
+          const nameText = document.createElement("strong");
+          nameText.textContent = product.name;
+
+          const caloriesText = document.createElement("span");
+          caloriesText.style.fontSize = "14px";
+          caloriesText.style.color = "#666";
+          if (product.type === "piece") {
+            caloriesText.textContent = `${product.caloriesPerPiece} kcal per piece`;
+          } else {
+            caloriesText.textContent = `${product.caloriesPer100g} kcal per 100g`;
+          }
+
+          productInfo.appendChild(nameText);
+          productInfo.appendChild(caloriesText);
+
+          const buttonsContainer = document.createElement("div");
+          buttonsContainer.style.display = "flex";
+          buttonsContainer.style.gap = "8px";
+          buttonsContainer.style.alignItems = "center";
+
+          const addBtn = document.createElement("button");
+          addBtn.style.padding = "8px 16px";
+          addBtn.style.background = "#2e7d32";
+          addBtn.style.color = "white";
+          addBtn.style.border = "none";
+          addBtn.style.borderRadius = "8px";
+          addBtn.style.cursor = "pointer";
+          addBtn.style.fontSize = "14px";
+          addBtn.textContent = "Add";
+          addBtn.onclick = () => showQuickAddModal(index);
+
+          const deleteBtn = document.createElement("button");
+          deleteBtn.className = "delete-btn";
+          deleteBtn.textContent = "Delete";
+          deleteBtn.onclick = () => deleteProduct(index);
+
+          buttonsContainer.appendChild(addBtn);
+          buttonsContainer.appendChild(deleteBtn);
+
+          li.appendChild(productInfo);
+          li.appendChild(buttonsContainer);
+          productsList.appendChild(li);
+        });
+      }
+    }
+
+    let currentQuickAddProductIndex = null;
+
+    function showQuickAddModal(productIndex) {
+      const data = loadData();
+      const product = data.products[productIndex];
+      if (!product) return;
+
+      currentQuickAddProductIndex = productIndex;
+      const modal = document.getElementById("quickAddModal");
+      const productName = document.getElementById("quickAddProductName");
+      const inputContainer = document.getElementById("quickAddInputContainer");
+
+      productName.textContent = product.name;
+      inputContainer.innerHTML = "";
+
+      if (product.type === "piece") {
+        const label = document.createElement("label");
+        label.textContent = "Number of pieces";
+        label.style.display = "block";
+        label.style.marginBottom = "8px";
+        label.style.fontWeight = "bold";
+
+        const input = document.createElement("input");
+        input.type = "number";
+        input.id = "quickAddValueInput";
+        input.placeholder = "e.g. 2";
+        input.min = "0.1";
+        input.step = "0.1";
+        input.style.width = "100%";
+        input.style.padding = "12px";
+        input.style.border = "1px solid #ccc";
+        input.style.borderRadius = "10px";
+        input.style.fontSize = "16px";
+
+        inputContainer.appendChild(label);
+        inputContainer.appendChild(input);
+        input.focus();
+      } else {
+        const label = document.createElement("label");
+        label.textContent = "Weight (grams)";
+        label.style.display = "block";
+        label.style.marginBottom = "8px";
+        label.style.fontWeight = "bold";
+
+        const input = document.createElement("input");
+        input.type = "number";
+        input.id = "quickAddValueInput";
+        input.placeholder = "e.g. 150";
+        input.min = "1";
+        input.style.width = "100%";
+        input.style.padding = "12px";
+        input.style.border = "1px solid #ccc";
+        input.style.borderRadius = "10px";
+        input.style.fontSize = "16px";
+
+        inputContainer.appendChild(label);
+        inputContainer.appendChild(input);
+        input.focus();
+      }
+
+      modal.style.display = "flex";
+    }
+
+    function hideQuickAddModal() {
+      const modal = document.getElementById("quickAddModal");
+      modal.style.display = "none";
+      currentQuickAddProductIndex = null;
+    }
+
+    function quickAddToToday() {
+      if (currentQuickAddProductIndex === null) return;
+
+      const input = document.getElementById("quickAddValueInput");
+      const value = Number(input.value);
+
+      if (!Number.isFinite(value) || value <= 0) {
+        alert("Enter a valid number.");
+        return;
+      }
+
+      const data = loadData();
+      const product = data.products[currentQuickAddProductIndex];
+      if (!product) return;
+
+      let calories = 0;
+      if (product.type === "piece") {
+        calories = product.caloriesPerPiece * value;
+      } else {
+        calories = (product.caloriesPer100g / 100) * value;
+      }
+
+      ensureTodayExists(data);
+      const today = getTodayKey();
+      data.days[today].entries.push({
+        calories: Math.round(calories),
+        createdAt: Date.now()
+      });
+
+      saveData(data);
+      hideQuickAddModal();
+      render();
+    }
+
+    let productType = "piece";
+
+    function setProductType(type) {
+      productType = type;
+      const pieceBtn = document.getElementById("productTypePieceBtn");
+      const weightBtn = document.getElementById("productTypeWeightBtn");
+      const container = document.getElementById("productCaloriesContainer");
+
+      pieceBtn.classList.remove("active");
+      weightBtn.classList.remove("active");
+
+      if (type === "piece") {
+        pieceBtn.classList.add("active");
+        container.innerHTML = '<label for="productCaloriesInput">Calories per piece</label><input type="number" id="productCaloriesInput" placeholder="e.g. 70" min="0" />';
+      } else {
+        weightBtn.classList.add("active");
+        container.innerHTML = '<label for="productCaloriesInput">Calories per 100g</label><input type="number" id="productCaloriesInput" placeholder="e.g. 52" min="0" />';
+      }
+    }
+
+    function addProduct() {
+      const nameInput = document.getElementById("productNameInput");
+      const caloriesInput = document.getElementById("productCaloriesInput");
+      const name = nameInput.value.trim();
+      const calories = Number(caloriesInput.value);
+
+      if (!name) {
+        alert("Enter a product name.");
+        return;
+      }
+
+      if (!Number.isFinite(calories) || calories < 0) {
+        alert("Enter a valid number of calories.");
+        return;
+      }
+
+      const data = loadData();
+      const product = {
+        name: name,
+        type: productType
+      };
+
+      if (productType === "piece") {
+        product.caloriesPerPiece = calories;
+      } else {
+        product.caloriesPer100g = calories;
+      }
+
+      data.products.push(product);
+
+      saveData(data);
+      nameInput.value = "";
+      caloriesInput.value = "";
+      renderProducts();
+      updateProductSelect();
+    }
+
+    function deleteProduct(index) {
+      const data = loadData();
+      data.products.splice(index, 1);
+      saveData(data);
+      renderProducts();
+      updateProductSelect();
+    }
+
+    document.querySelectorAll(".tab").forEach(tab => {
+      tab.addEventListener("click", function() {
+        switchTab(this.dataset.tab);
+      });
+    });
+
+    document.getElementById("productTypePieceBtn").addEventListener("click", () => setProductType("piece"));
+    document.getElementById("productTypeWeightBtn").addEventListener("click", () => setProductType("weight"));
+
+    document.getElementById("quickAddConfirmBtn").addEventListener("click", quickAddToToday);
+    document.getElementById("quickAddCancelBtn").addEventListener("click", hideQuickAddModal);
+    document.getElementById("quickAddModal").addEventListener("click", function(e) {
+      if (e.target === this) {
+        hideQuickAddModal();
+      }
+    });
+
+    document.getElementById("modeDirectBtn").addEventListener("click", () => setCalorieMode("direct"));
+    document.getElementById("modePiecesBtn").addEventListener("click", () => setCalorieMode("pieces"));
+    document.getElementById("modeWeightBtn").addEventListener("click", () => setCalorieMode("weight"));
+
+    document.getElementById("addProductBtn").addEventListener("click", addProduct);
+    document.getElementById("productNameInput").addEventListener("keydown", function(event) {
+      if (event.key === "Enter") {
+        document.getElementById("productCaloriesInput").focus();
+      }
+    });
+    document.getElementById("productCaloriesInput").addEventListener("keydown", function(event) {
+      if (event.key === "Enter") {
+        addProduct();
+      }
+    });
+
+    document.getElementById("editLimitBtn").addEventListener("click", showEditLimit);
+    document.getElementById("saveLimitBtn").addEventListener("click", saveLimit);
+    document.getElementById("addEntryBtn").addEventListener("click", addEntry);
+
+    document.getElementById("calorieInput").addEventListener("keydown", function(event) {
+      if (event.key === "Enter") {
+        addEntry();
+      }
+    });
+
+    document.getElementById("limitInput").addEventListener("keydown", function(event) {
+      if (event.key === "Enter") {
+        saveLimit();
+      }
+      if (event.key === "Escape") {
+        hideEditLimit();
+      }
+    });
+
+    render();
+    updateProductSelect();
+    
+    document.addEventListener("keydown", function(event) {
+      const modal = document.getElementById("quickAddModal");
+      if (modal.style.display === "flex") {
+        const input = document.getElementById("quickAddValueInput");
+        if (event.key === "Enter" && input && document.activeElement === input) {
+          quickAddToToday();
+        }
+        if (event.key === "Escape") {
+          hideQuickAddModal();
+        }
+      }
+    });
+  </script>
+</body>
+</html>

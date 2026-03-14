@@ -566,6 +566,15 @@
         <ul id="productsList"></ul>
         <p id="productsEmptyMessage" class="empty">No products yet.</p>
       </div>
+
+      <div class="block">
+        <h2>Data Backup</h2>
+        <button id="exportDataBtn" style="background: #2e7d32; margin-bottom: 10px;">Export Data</button>
+        <label for="importDataInput" style="display: block; margin-bottom: 8px;">Import Data</label>
+        <input type="file" id="importDataInput" accept=".json" style="display: none;" />
+        <button id="importDataBtn" onclick="document.getElementById('importDataInput').click();" style="background: #1976d2;">Import Data</button>
+        <div class="hint" style="margin-top: 8px;">Export your data as JSON file to backup. Import to restore from backup.</div>
+      </div>
     </div>
 
     <div id="quickAddModal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center;">
@@ -1648,6 +1657,51 @@
       selectedDayKey = this.value;
       renderEdit();
     });
+
+    function exportData() {
+      const data = loadData();
+      const jsonStr = JSON.stringify(data, null, 2);
+      const blob = new Blob([jsonStr], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `calorie-tracker-backup-${getTodayKey()}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+
+    function importData(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          const importedData = JSON.parse(e.target.result);
+          
+          if (!importedData.dailyLimit || !importedData.days || !importedData.products) {
+            alert("Invalid data format.");
+            return;
+          }
+
+          const confirmed = confirm("This will replace all your current data. Continue?");
+          if (!confirmed) return;
+
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(importedData));
+          alert("Data imported successfully!");
+          location.reload();
+        } catch (error) {
+          alert("Error importing data: " + error.message);
+        }
+      };
+      reader.readAsText(file);
+      event.target.value = "";
+    }
+
+    document.getElementById("exportDataBtn").addEventListener("click", exportData);
+    document.getElementById("importDataInput").addEventListener("change", importData);
 
     render();
     updateProductSelect();

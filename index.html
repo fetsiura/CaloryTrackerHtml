@@ -429,6 +429,7 @@
       <button class="tab active" data-tab="today">Today</button>
       <button class="tab" data-tab="statistics">Statistics</button>
       <button class="tab" data-tab="products">Products</button>
+      <button class="tab" data-tab="edit">Edit</button>
     </div>
 
     <div id="todayTab" class="tab-content active">
@@ -472,7 +473,7 @@
       </div>
 
       <div class="block">
-        <h2>Today's Entries</h2>
+        <h2 id="entriesTitle">Today's Entries</h2>
         <ul id="entriesList"></ul>
         <p id="emptyMessage" class="empty">No entries yet.</p>
       </div>
@@ -497,6 +498,38 @@
       <div class="block">
         <h2>Monthly Statistics</h2>
         <div id="monthlyStats"></div>
+      </div>
+    </div>
+
+    <div id="editTab" class="tab-content">
+      <div class="block">
+        <label>Select Day</label>
+        <select id="daySelect" style="width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 10px; font-size: 16px; margin-bottom: 10px; -webkit-appearance: none; appearance: none;">
+        </select>
+      </div>
+
+      <div class="block">
+        <label for="calorieInputEdit">Add Calories</label>
+        <input type="number" id="calorieInputEdit" placeholder="e.g. 150" min="1" />
+        <button id="addEntryBtnEdit">Add</button>
+        <div class="hint">You can press Enter in the field.</div>
+      </div>
+
+      <div class="block stats">
+        <h2 id="statsTitleEdit">Today</h2>
+        <p>Limit: <strong id="limitValueEdit">0</strong></p>
+        <p>Consumed: <strong id="consumedValueEdit">0</strong></p>
+        <div class="progress-bar">
+          <div class="progress-fill" id="progressFillEdit"></div>
+          <div class="progress-text" id="progressTextEdit">0%</div>
+        </div>
+        <p class="remaining">Remaining: <span id="remainingValueEdit" class="positive">0</span></p>
+      </div>
+
+      <div class="block">
+        <h2 id="entriesTitleEdit">Today's Entries</h2>
+        <ul id="entriesListEdit"></ul>
+        <p id="emptyMessageEdit" class="empty">No entries yet.</p>
       </div>
     </div>
 
@@ -840,6 +873,14 @@
       }
     }
 
+    function ensureDayExists(data, dayKey) {
+      if (!data.days[dayKey]) {
+        data.days[dayKey] = {
+          entries: []
+        };
+      }
+    }
+
     function calculateConsumed(entries) {
       return entries.reduce((sum, entry) => sum + entry.calories, 0);
     }
@@ -922,6 +963,34 @@
       });
     }
 
+    let selectedDayKey = null;
+
+    function updateDaySelect() {
+      const daySelect = document.getElementById("daySelect");
+      daySelect.innerHTML = "";
+      
+      for (let i = 0; i < 7; i++) {
+        const date = new Date();
+        date.setDate(date.getDate() - i);
+        const key = getDateKey(date);
+        const option = document.createElement("option");
+        option.value = key;
+        
+        if (i === 0) {
+          option.textContent = `Today - ${formatShortDate(date)}`;
+        } else {
+          option.textContent = formatShortDate(date);
+        }
+        
+        daySelect.appendChild(option);
+      }
+      
+      if (!selectedDayKey) {
+        selectedDayKey = getTodayKey();
+      }
+      daySelect.value = selectedDayKey;
+    }
+
     function render() {
       const data = loadData();
       ensureTodayExists(data);
@@ -934,7 +1003,7 @@
       const remaining = data.dailyLimit - consumed;
 
       document.getElementById("todayDate").textContent = formatToday();
-      document.getElementById("limitInput").value = data.dailyLimit;
+      
       document.getElementById("limitDisplayValue").textContent = data.dailyLimit;
       document.getElementById("limitValue").textContent = data.dailyLimit;
       document.getElementById("consumedValue").textContent = consumed;
@@ -987,6 +1056,108 @@
           entriesList.appendChild(li);
         });
       }
+    }
+
+    function renderEdit() {
+      const data = loadData();
+      const dayKey = selectedDayKey || getTodayKey();
+      ensureDayExists(data, dayKey);
+      saveData(data);
+
+      const dayData = data.days[dayKey];
+      const entries = dayData.entries;
+      const consumed = calculateConsumed(entries);
+      const remaining = data.dailyLimit - consumed;
+
+      const selectedDate = new Date(dayKey + "T00:00:00");
+      const isToday = dayKey === getTodayKey();
+      document.getElementById("statsTitleEdit").textContent = isToday ? "Today" : selectedDate.toLocaleDateString("en-US", { weekday: "long" });
+      document.getElementById("entriesTitleEdit").textContent = isToday ? "Today's Entries" : "Entries";
+      
+      document.getElementById("limitValueEdit").textContent = data.dailyLimit;
+      document.getElementById("consumedValueEdit").textContent = consumed;
+
+      const remainingElement = document.getElementById("remainingValueEdit");
+      remainingElement.textContent = remaining;
+      remainingElement.className = remaining < 0 ? "negative" : "positive";
+
+      const progressFill = document.getElementById("progressFillEdit");
+      const progressText = document.getElementById("progressTextEdit");
+      const percent = data.dailyLimit > 0 ? Math.min((consumed / data.dailyLimit) * 100, 100) : 0;
+      progressFill.style.width = `${percent}%`;
+      progressFill.className = consumed > data.dailyLimit ? "progress-fill over-limit" : "progress-fill";
+      progressText.textContent = `${Math.round(percent)}%`;
+
+      const entriesList = document.getElementById("entriesListEdit");
+      const emptyMessage = document.getElementById("emptyMessageEdit");
+      entriesList.innerHTML = "";
+
+      if (entries.length === 0) {
+        emptyMessage.style.display = "block";
+      } else {
+        emptyMessage.style.display = "none";
+
+        entries.forEach((entry, index) => {
+          const li = document.createElement("li");
+
+          const left = document.createElement("div");
+          left.className = "entry-left";
+
+          const caloriesText = document.createElement("strong");
+          caloriesText.textContent = `${entry.calories} kcal`;
+
+          const timeText = document.createElement("span");
+          timeText.className = "entry-time";
+          timeText.textContent = formatTime(entry.createdAt);
+
+          left.appendChild(caloriesText);
+          left.appendChild(timeText);
+
+          const deleteBtn = document.createElement("button");
+          deleteBtn.className = "delete-btn";
+          deleteBtn.textContent = "Delete";
+          deleteBtn.onclick = () => deleteEntryEdit(index);
+
+          li.appendChild(left);
+          li.appendChild(deleteBtn);
+          entriesList.appendChild(li);
+        });
+      }
+    }
+
+    function deleteEntryEdit(index) {
+      const data = loadData();
+      const dayKey = selectedDayKey || getTodayKey();
+      ensureDayExists(data, dayKey);
+
+      data.days[dayKey].entries.splice(index, 1);
+
+      saveData(data);
+      renderEdit();
+    }
+
+
+    function addEntryEdit() {
+      const input = document.getElementById("calorieInputEdit");
+      const value = Number(input.value);
+
+      if (!Number.isFinite(value) || value <= 0) {
+        alert("Enter a valid number.");
+        return;
+      }
+
+      const data = loadData();
+      const dayKey = selectedDayKey || getTodayKey();
+      ensureDayExists(data, dayKey);
+
+      data.days[dayKey].entries.push({
+        calories: Math.round(value),
+        createdAt: Date.now()
+      });
+
+      saveData(data);
+      input.value = "";
+      renderEdit();
     }
 
     function showEditLimit() {
@@ -1114,9 +1285,9 @@
       }
 
       const data = loadData();
+      const today = getTodayKey();
       ensureTodayExists(data);
 
-      const today = getTodayKey();
       data.days[today].entries.push({
         calories: Math.round(calories),
         createdAt: Date.now()
@@ -1130,10 +1301,10 @@
 
     function deleteEntry(index) {
       const data = loadData();
-      ensureTodayExists(data);
+      const dayKey = selectedDayKey || getTodayKey();
+      ensureDayExists(data, dayKey);
 
-      const today = getTodayKey();
-      data.days[today].entries.splice(index, 1);
+      data.days[dayKey].entries.splice(index, 1);
 
       saveData(data);
       render();
@@ -1156,6 +1327,9 @@
         renderMonthlyStats();
       } else if (tabName === "products") {
         renderProducts();
+      } else if (tabName === "edit") {
+        updateDaySelect();
+        renderEdit();
       } else if (tabName === "today") {
         updateProductSelect();
       }
@@ -1323,9 +1497,9 @@
         calories = (product.caloriesPer100g / 100) * value;
       }
 
-      ensureTodayExists(data);
-      const today = getTodayKey();
-      data.days[today].entries.push({
+      const dayKey = selectedDayKey || getTodayKey();
+      ensureDayExists(data, dayKey);
+      data.days[dayKey].entries.push({
         calories: Math.round(calories),
         createdAt: Date.now()
       });
@@ -1421,6 +1595,13 @@
     document.getElementById("modePiecesBtn").addEventListener("click", () => setCalorieMode("pieces"));
     document.getElementById("modeWeightBtn").addEventListener("click", () => setCalorieMode("weight"));
 
+    document.getElementById("addEntryBtnEdit").addEventListener("click", addEntryEdit);
+    document.getElementById("calorieInputEdit").addEventListener("keydown", function(event) {
+      if (event.key === "Enter") {
+        addEntryEdit();
+      }
+    });
+
     document.getElementById("addProductBtn").addEventListener("click", addProduct);
     document.getElementById("productNameInput").addEventListener("keydown", function(event) {
       if (event.key === "Enter") {
@@ -1452,8 +1633,15 @@
       }
     });
 
+    document.getElementById("daySelect").addEventListener("change", function() {
+      selectedDayKey = this.value;
+      renderEdit();
+    });
+
     render();
     updateProductSelect();
+    updateDaySelect();
+    renderEdit();
     
     document.addEventListener("keydown", function(event) {
       const modal = document.getElementById("quickAddModal");

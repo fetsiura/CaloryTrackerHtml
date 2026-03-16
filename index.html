@@ -311,6 +311,65 @@
       margin-top: 2px;
     }
 
+    .weight-chart-container {
+      position: relative;
+      height: 200px;
+      padding: 8px 0;
+      margin-top: 16px;
+    }
+
+    .weight-chart-bars {
+      display: flex;
+      align-items: flex-end;
+      gap: 4px;
+      height: 100%;
+      position: relative;
+      min-height: 0;
+    }
+
+    .weight-bar-wrapper {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      height: 100%;
+    }
+
+    .weight-bar {
+      width: 100%;
+      background: #2196f3;
+      border-radius: 4px 4px 0 0;
+      min-height: 2px;
+      transition: height 0.3s ease;
+      position: relative;
+      flex-shrink: 0;
+    }
+
+    .weight-chart-label {
+      font-size: 9px;
+      color: #777;
+      text-align: center;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 100%;
+    }
+
+    .weight-chart-value {
+      font-size: 10px;
+      color: #555;
+      font-weight: bold;
+      margin-top: 2px;
+    }
+
+    .weight-chart-empty {
+      text-align: center;
+      color: #999;
+      padding: 40px 0;
+      font-style: italic;
+    }
+
     .tabs {
       display: flex;
       gap: 8px;
@@ -441,6 +500,7 @@
       <button class="tab" data-tab="statistics">Statistics</button>
       <button class="tab" data-tab="products">Products</button>
       <button class="tab" data-tab="edit">Edit</button>
+      <button class="tab" data-tab="data">Data</button>
     </div>
 
     <div id="todayTab" class="tab-content active">
@@ -510,6 +570,11 @@
         <h2>Monthly Statistics</h2>
         <div id="monthlyStats"></div>
       </div>
+
+      <div class="block chart-container">
+        <h2>Weight Tracking (Last 2 Months)</h2>
+        <div id="weightChart"></div>
+      </div>
     </div>
 
     <div id="editTab" class="tab-content">
@@ -524,6 +589,13 @@
         <input type="number" id="calorieInputEdit" placeholder="e.g. 150" min="1" />
         <button id="addEntryBtnEdit">Add</button>
         <div class="hint">You can press Enter in the field.</div>
+      </div>
+
+      <div class="block">
+        <label for="weightInputEdit">Weight (kg)</label>
+        <input type="number" id="weightInputEdit" placeholder="e.g. 75.5" step="0.1" min="0" />
+        <button id="saveWeightBtnEdit">Save Weight</button>
+        <div id="currentWeightDisplay" class="hint" style="margin-top: 8px;"></div>
       </div>
 
       <div class="block stats">
@@ -565,6 +637,14 @@
         <h2>My Products</h2>
         <ul id="productsList"></ul>
         <p id="productsEmptyMessage" class="empty">No products yet.</p>
+      </div>
+    </div>
+
+    <div id="dataTab" class="tab-content">
+      <div class="block">
+        <h2>Clean Old Data</h2>
+        <button id="cleanOldDataBtn" style="background: #d32f2f; margin-bottom: 10px;">Delete Data</button>
+        <div class="hint" style="margin-top: 8px;">This will permanently delete all calories entries and weight data. Products will be preserved. This action cannot be undone!</div>
       </div>
 
       <div class="block">
@@ -623,7 +703,8 @@
         return {
           dailyLimit: 2000,
           days: {},
-          products: []
+          products: [],
+          statisticsStartDate: null
         };
       }
 
@@ -632,7 +713,8 @@
         const data = {
           dailyLimit: parsed.dailyLimit ?? 2000,
           days: parsed.days ?? {},
-          products: parsed.products ?? []
+          products: parsed.products ?? [],
+          statisticsStartDate: parsed.statisticsStartDate ?? null
         };
         cleanOldData(data);
         if (Object.keys(data.days).length !== Object.keys(parsed.days ?? {}).length) {
@@ -643,7 +725,8 @@
         return {
           dailyLimit: 2000,
           days: {},
-          products: []
+          products: [],
+          statisticsStartDate: null
         };
       }
     }
@@ -694,11 +777,29 @@
       });
     }
 
+    function getStatisticsStartDate(data) {
+      if (data.statisticsStartDate) {
+        return new Date(data.statisticsStartDate + "T00:00:00");
+      }
+      return null;
+    }
+
+    function isDateInRange(date, startDate) {
+      if (!startDate) return true;
+      return date >= startDate;
+    }
+
     function calculateWeeklyStats(data) {
       const weeklyData = {};
+      const startDate = getStatisticsStartDate(data);
 
       for (const dateKey in data.days) {
         const date = new Date(dateKey + "T00:00:00");
+        
+        if (!isDateInRange(date, startDate)) {
+          continue;
+        }
+
         const weekKey = getWeekKey(date);
         const consumed = calculateConsumed(data.days[dateKey].entries);
 
@@ -720,6 +821,7 @@
           ...weeklyData[key],
           weekLimit: data.dailyLimit * 7
         }))
+        .filter(week => week.consumed > 0 || week.daysCount > 0) // Only show weeks with data
         .sort((a, b) => b.key.localeCompare(a.key));
 
       return weeks;
@@ -749,9 +851,15 @@
 
     function calculateMonthlyStats(data) {
       const monthlyData = {};
+      const startDate = getStatisticsStartDate(data);
 
       for (const dateKey in data.days) {
         const date = new Date(dateKey + "T00:00:00");
+        
+        if (!isDateInRange(date, startDate)) {
+          continue;
+        }
+
         const monthKey = getMonthKey(date);
         const consumed = calculateConsumed(data.days[dateKey].entries);
 
@@ -777,6 +885,7 @@
             monthLimit: data.dailyLimit * daysInMonth
           };
         })
+        .filter(month => month.consumed > 0 || month.daysCount > 0) // Only show months with data
         .sort((a, b) => b.key.localeCompare(a.key))
         .slice(0, 12);
 
@@ -785,6 +894,68 @@
 
     function formatMonthRange(monthStart) {
       return monthStart.toLocaleDateString("en-US", { month: "long", year: "numeric" });
+    }
+
+    function renderWeightChart() {
+      const data = loadData();
+      const container = document.getElementById("weightChart");
+      
+      // Get last 2 months of data
+      const twoMonthsAgo = new Date();
+      twoMonthsAgo.setMonth(twoMonthsAgo.getMonth() - 2);
+      const cutoffDate = new Date(twoMonthsAgo.getFullYear(), twoMonthsAgo.getMonth(), 1);
+      const cutoffKey = getDateKey(cutoffDate);
+
+      // Collect weight data
+      const weightData = [];
+      for (const dateKey in data.days) {
+        if (dateKey >= cutoffKey && data.days[dateKey].weight !== undefined) {
+          const date = new Date(dateKey + "T00:00:00");
+          weightData.push({
+            date: date,
+            dateKey: dateKey,
+            weight: data.days[dateKey].weight
+          });
+        }
+      }
+
+      // Sort by date
+      weightData.sort((a, b) => a.dateKey.localeCompare(b.dateKey));
+
+      if (weightData.length === 0) {
+        container.innerHTML = "<p class='weight-chart-empty'>No weight data available for the last 2 months.</p>";
+        return;
+      }
+
+      // Calculate min and max weight for scaling
+      const weights = weightData.map(d => d.weight);
+      const minWeight = Math.min(...weights);
+      const maxWeight = Math.max(...weights);
+      const weightRange = maxWeight - minWeight || 1; // Avoid division by zero
+
+      // Create chart HTML
+      let html = '<div class="weight-chart-container"><div class="weight-chart-bars">';
+      
+      weightData.forEach(item => {
+        const heightPercent = ((item.weight - minWeight) / weightRange) * 100;
+        const dayLabel = item.date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+        
+        html += '<div class="weight-bar-wrapper">';
+        html += `<div class="weight-bar" style="height: ${Math.max(heightPercent, 2)}%;" title="${item.weight} kg"></div>`;
+        html += `<div class="weight-chart-value">${item.weight}</div>`;
+        html += `<div class="weight-chart-label">${dayLabel}</div>`;
+        html += '</div>';
+      });
+
+      html += '</div></div>';
+      
+      // Add min/max labels
+      html += `<div style="display: flex; justify-content: space-between; margin-top: 8px; font-size: 11px; color: #666;">`;
+      html += `<span>Min: ${minWeight.toFixed(1)} kg</span>`;
+      html += `<span>Max: ${maxWeight.toFixed(1)} kg</span>`;
+      html += `</div>`;
+
+      container.innerHTML = html;
     }
 
     function renderMonthlyStats() {
@@ -899,6 +1070,26 @@
           entries: []
         };
       }
+    }
+
+    function saveWeightEdit() {
+      const input = document.getElementById("weightInputEdit");
+      const value = parseFloat(input.value);
+
+      if (!Number.isFinite(value) || value <= 0) {
+        alert("Enter a valid weight.");
+        return;
+      }
+
+      const data = loadData();
+      const dayKey = selectedDayKey || getTodayKey();
+      ensureDayExists(data, dayKey);
+
+      data.days[dayKey].weight = Math.round(value * 10) / 10; // Round to 1 decimal
+
+      saveData(data);
+      input.value = "";
+      renderEdit();
     }
 
     function calculateConsumed(entries) {
@@ -1143,6 +1334,14 @@
           entriesList.appendChild(li);
         });
       }
+
+      // Display current weight
+      const currentWeightDisplay = document.getElementById("currentWeightDisplay");
+      if (dayData.weight !== undefined) {
+        currentWeightDisplay.textContent = `Current weight: ${dayData.weight} kg`;
+      } else {
+        currentWeightDisplay.textContent = "No weight recorded for this day";
+      }
     }
 
     function deleteEntryEdit(index) {
@@ -1345,11 +1544,14 @@
         renderChart();
         renderWeeklyStats();
         renderMonthlyStats();
+        renderWeightChart();
       } else if (tabName === "products") {
         renderProducts();
       } else if (tabName === "edit") {
         updateDaySelect();
         renderEdit();
+      } else if (tabName === "data") {
+        // Data tab - no special rendering needed
       } else if (tabName === "today") {
         updateProductSelect();
       }
@@ -1621,6 +1823,12 @@
         addEntryEdit();
       }
     });
+    document.getElementById("saveWeightBtnEdit").addEventListener("click", saveWeightEdit);
+    document.getElementById("weightInputEdit").addEventListener("keydown", function(event) {
+      if (event.key === "Enter") {
+        saveWeightEdit();
+      }
+    });
 
     document.getElementById("addProductBtn").addEventListener("click", addProduct);
     document.getElementById("productNameInput").addEventListener("keydown", function(event) {
@@ -1689,7 +1897,14 @@
           const confirmed = confirm("This will replace all your current data. Continue?");
           if (!confirmed) return;
 
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(importedData));
+          const dataToSave = {
+            dailyLimit: importedData.dailyLimit,
+            days: importedData.days,
+            products: importedData.products,
+            statisticsStartDate: importedData.statisticsStartDate || null
+          };
+
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(dataToSave));
           alert("Data imported successfully!");
           location.reload();
         } catch (error) {
@@ -1700,8 +1915,59 @@
       event.target.value = "";
     }
 
+    function cleanOldDataByStartDate() {
+      const data = loadData();
+      
+      let totalDays = 0;
+      let totalEntries = 0;
+      
+      for (const dateKey in data.days) {
+        totalDays++;
+        totalEntries += data.days[dateKey].entries.length;
+      }
+
+      if (totalDays === 0) {
+        alert("No data to delete.");
+        return;
+      }
+
+      const confirmed = confirm(
+        `This will permanently delete all calories and weight data:\n` +
+        `- ${totalDays} day(s)\n` +
+        `- ${totalEntries} calorie entry(entries)\n` +
+        `- All weight records\n\n` +
+        `Products will be preserved.\n\n` +
+        `This action cannot be undone! Continue?`
+      );
+
+      if (!confirmed) return;
+
+      // Delete all days data (calories and weight)
+      data.days = {};
+      
+      // Reset daily limit to default (optional - you can keep it if needed)
+      // data.dailyLimit = 2000;
+      
+      // Reset statistics start date (optional - you can keep it if needed)
+      // data.statisticsStartDate = null;
+      
+      // Products are preserved automatically (not touched)
+
+      saveData(data);
+      alert(`Deleted all calories and weight data (${totalDays} day(s), ${totalEntries} entries). Products have been preserved.`);
+      
+      // Refresh the UI
+      render();
+      renderEdit();
+      renderChart();
+      renderWeeklyStats();
+      renderMonthlyStats();
+      renderWeightChart();
+    }
+
     document.getElementById("exportDataBtn").addEventListener("click", exportData);
     document.getElementById("importDataInput").addEventListener("change", importData);
+    document.getElementById("cleanOldDataBtn").addEventListener("click", cleanOldDataByStartDate);
 
     render();
     updateProductSelect();

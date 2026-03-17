@@ -509,18 +509,6 @@
 
     <div id="todayTab" class="tab-content active">
       <div class="block">
-        <label>Daily Calorie Limit</label>
-        <div id="limitDisplay" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-          <span style="font-size: 18px;"><strong id="limitDisplayValue">0</strong> kcal</span>
-          <button id="editLimitBtn" style="width: auto; padding: 8px 16px; margin: 0;">Edit</button>
-        </div>
-        <div id="limitEdit" style="display: none;">
-          <input type="number" id="limitInput" placeholder="e.g. 2200" min="0" />
-          <button id="saveLimitBtn">Save Limit</button>
-        </div>
-      </div>
-
-      <div class="block">
         <label for="calorieInput">Add Calories</label>
         <div style="display: flex; gap: 8px; margin-bottom: 10px;">
           <button id="modeDirectBtn" class="mode-btn active" style="flex: 1; padding: 8px; background: #222; color: white; border: none; border-radius: 8px; cursor: pointer;">Direct</button>
@@ -589,6 +577,18 @@
     </div>
 
     <div id="editTab" class="tab-content">
+      <div class="block">
+        <label>Daily Calorie Limit</label>
+        <div id="limitDisplay" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+          <span style="font-size: 18px;"><strong id="limitDisplayValue">0</strong> kcal</span>
+          <button id="editLimitBtn" style="width: auto; padding: 8px 16px; margin: 0;">Edit</button>
+        </div>
+        <div id="limitEdit" style="display: none;">
+          <input type="number" id="limitInput" placeholder="e.g. 2200" min="0" />
+          <button id="saveLimitBtn">Save Limit</button>
+        </div>
+      </div>
+
       <div class="block">
         <label>Select Day</label>
         <select id="daySelect" style="width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 10px; font-size: 16px; margin-bottom: 10px; -webkit-appearance: none; appearance: none;">
@@ -1286,6 +1286,8 @@
       const dayKey = selectedDayKey || getTodayKey();
       ensureDayExists(data, dayKey);
       saveData(data);
+
+      document.getElementById("limitDisplayValue").textContent = data.dailyLimit;
 
       const dayData = data.days[dayKey];
       const entries = dayData.entries;

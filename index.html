@@ -488,6 +488,10 @@
       background: #e0e0e0 !important;
       color: #222 !important;
     }
+
+    .entry-subtract .entry-left strong {
+      color: #2e7d32;
+    }
   </style>
 </head>
 <body>
@@ -530,6 +534,13 @@
         <div id="calorieModeHint" class="hint" style="margin-top: 4px;">Enter calories directly</div>
         <button id="addEntryBtn">Add</button>
         <div class="hint">You can press Enter in the field.</div>
+      </div>
+
+      <div class="block">
+        <label for="subtractInput">Subtract Calories (e.g. exercise)</label>
+        <input type="number" id="subtractInput" placeholder="e.g. 300" min="1" />
+        <button id="subtractEntryBtn" style="background: #1976d2;">Subtract</button>
+        <div class="hint">Enter calories burned (running, workout, etc.) to subtract from consumed.</div>
       </div>
 
       <div class="block stats">
@@ -1225,7 +1236,7 @@
 
       const progressFill = document.getElementById("progressFill");
       const progressText = document.getElementById("progressText");
-      const percent = data.dailyLimit > 0 ? Math.min((consumed / data.dailyLimit) * 100, 100) : 0;
+      const percent = data.dailyLimit > 0 ? Math.max(0, Math.min((consumed / data.dailyLimit) * 100, 100)) : 0;
       progressFill.style.width = `${percent}%`;
       progressFill.className = consumed > data.dailyLimit ? "progress-fill over-limit" : "progress-fill";
       progressText.textContent = `${Math.round(percent)}%`;
@@ -1243,6 +1254,7 @@
 
         entries.forEach((entry, index) => {
           const li = document.createElement("li");
+          if (entry.calories < 0) li.classList.add("entry-subtract");
 
           const left = document.createElement("div");
           left.className = "entry-left";
@@ -1310,6 +1322,7 @@
 
         entries.forEach((entry, index) => {
           const li = document.createElement("li");
+          if (entry.calories < 0) li.classList.add("entry-subtract");
 
           const left = document.createElement("div");
           left.className = "entry-left";
@@ -1518,12 +1531,35 @@
       render();
     }
 
+    function subtractEntry() {
+      const input = document.getElementById("subtractInput");
+      const value = Number(input.value);
+
+      if (!Number.isFinite(value) || value <= 0) {
+        alert("Enter a valid number.");
+        return;
+      }
+
+      const data = loadData();
+      const today = getTodayKey();
+      ensureTodayExists(data);
+
+      data.days[today].entries.push({
+        calories: -Math.round(value),
+        createdAt: Date.now()
+      });
+
+      saveData(data);
+      input.value = "";
+      render();
+    }
+
     function deleteEntry(index) {
       const data = loadData();
-      const dayKey = selectedDayKey || getTodayKey();
-      ensureDayExists(data, dayKey);
+      const today = getTodayKey();
+      ensureDayExists(data, today);
 
-      data.days[dayKey].entries.splice(index, 1);
+      data.days[today].entries.splice(index, 1);
 
       saveData(data);
       render();
@@ -1849,6 +1885,12 @@
     document.getElementById("calorieInput").addEventListener("keydown", function(event) {
       if (event.key === "Enter") {
         addEntry();
+      }
+    });
+    document.getElementById("subtractEntryBtn").addEventListener("click", subtractEntry);
+    document.getElementById("subtractInput").addEventListener("keydown", function(event) {
+      if (event.key === "Enter") {
+        subtractEntry();
       }
     });
 

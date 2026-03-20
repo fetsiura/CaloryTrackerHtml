@@ -640,7 +640,10 @@
           <label for="productCaloriesInput">Calories per piece</label>
           <input type="number" id="productCaloriesInput" placeholder="e.g. 70" min="0" />
         </div>
-        <button id="addProductBtn">Add Product</button>
+        <div style="display: flex; gap: 8px;">
+          <button id="addProductBtn" style="flex: 1;">Add Product</button>
+          <button id="cancelEditProductBtn" style="flex: 1; background: #666; display: none;">Cancel</button>
+        </div>
         <div class="hint">You can press Enter in the field.</div>
       </div>
 
@@ -1427,7 +1430,11 @@
       const productSelect = document.getElementById("productSelect");
       productSelect.innerHTML = '<option value="">Select a product...</option>';
       
-      data.products.forEach((product, index) => {
+      const sorted = data.products
+        .map((product, index) => ({ product, index }))
+        .sort((a, b) => a.product.name.localeCompare(b.product.name, "uk", { sensitivity: "base" }));
+
+      sorted.forEach(({ product, index }) => {
         const option = document.createElement("option");
         option.value = index;
         if (product.type === "piece") {
@@ -1606,7 +1613,11 @@
       } else {
         emptyMessage.style.display = "none";
 
-        data.products.forEach((product, index) => {
+        const sorted = data.products
+          .map((product, index) => ({ product, index }))
+          .sort((a, b) => a.product.name.localeCompare(b.product.name, "uk", { sensitivity: "base" }));
+
+        sorted.forEach(({ product, index }) => {
           const li = document.createElement("li");
           li.style.display = "flex";
           li.style.justifyContent = "space-between";
@@ -1640,23 +1651,23 @@
           buttonsContainer.style.gap = "8px";
           buttonsContainer.style.alignItems = "center";
 
-          const addBtn = document.createElement("button");
-          addBtn.style.padding = "8px 16px";
-          addBtn.style.background = "#2e7d32";
-          addBtn.style.color = "white";
-          addBtn.style.border = "none";
-          addBtn.style.borderRadius = "8px";
-          addBtn.style.cursor = "pointer";
-          addBtn.style.fontSize = "14px";
-          addBtn.textContent = "Add";
-          addBtn.onclick = () => showQuickAddModal(index);
+          const editBtn = document.createElement("button");
+          editBtn.style.padding = "8px 16px";
+          editBtn.style.background = "#1976d2";
+          editBtn.style.color = "white";
+          editBtn.style.border = "none";
+          editBtn.style.borderRadius = "8px";
+          editBtn.style.cursor = "pointer";
+          editBtn.style.fontSize = "14px";
+          editBtn.textContent = "Edit";
+          editBtn.onclick = () => showEditProduct(index);
 
           const deleteBtn = document.createElement("button");
           deleteBtn.className = "delete-btn";
           deleteBtn.textContent = "Delete";
           deleteBtn.onclick = () => deleteProduct(index);
 
-          buttonsContainer.appendChild(addBtn);
+          buttonsContainer.appendChild(editBtn);
           buttonsContainer.appendChild(deleteBtn);
 
           li.appendChild(productInfo);
@@ -1770,6 +1781,38 @@
     }
 
     let productType = "piece";
+    let editingProductIndex = null;
+
+    function showEditProduct(index) {
+      const data = loadData();
+      const product = data.products[index];
+      if (!product) return;
+
+      editingProductIndex = index;
+      document.getElementById("productNameInput").value = product.name;
+      setProductType(product.type);
+      setTimeout(() => {
+        const caloriesInput = document.getElementById("productCaloriesInput");
+        if (caloriesInput) {
+          caloriesInput.value = product.type === "piece" ? product.caloriesPerPiece : product.caloriesPer100g;
+        }
+      }, 0);
+
+      document.getElementById("addProductBtn").textContent = "Save";
+      document.getElementById("cancelEditProductBtn").style.display = "block";
+      document.getElementById("productNameInput").focus();
+    }
+
+    function cancelEditProduct() {
+      editingProductIndex = null;
+      document.getElementById("productNameInput").value = "";
+      setProductType("piece");
+      const caloriesInput = document.getElementById("productCaloriesInput");
+      if (caloriesInput) caloriesInput.value = "";
+
+      document.getElementById("addProductBtn").textContent = "Add Product";
+      document.getElementById("cancelEditProductBtn").style.display = "none";
+    }
 
     function setProductType(type) {
       productType = type;
@@ -1817,11 +1860,16 @@
         product.caloriesPer100g = calories;
       }
 
-      data.products.push(product);
+      if (editingProductIndex !== null) {
+        data.products[editingProductIndex] = product;
+        cancelEditProduct();
+      } else {
+        data.products.push(product);
+        nameInput.value = "";
+        caloriesInput.value = "";
+      }
 
       saveData(data);
-      nameInput.value = "";
-      caloriesInput.value = "";
       renderProducts();
       updateProductSelect();
     }
@@ -1869,6 +1917,7 @@
     });
 
     document.getElementById("addProductBtn").addEventListener("click", addProduct);
+    document.getElementById("cancelEditProductBtn").addEventListener("click", cancelEditProduct);
     document.getElementById("productNameInput").addEventListener("keydown", function(event) {
       if (event.key === "Enter") {
         document.getElementById("productCaloriesInput").focus();

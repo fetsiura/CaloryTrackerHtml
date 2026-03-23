@@ -504,6 +504,7 @@
       <button class="tab" data-tab="statistics">Statistics</button>
       <button class="tab" data-tab="products">Products</button>
       <button class="tab" data-tab="edit">Edit</button>
+      <button class="tab" data-tab="notes">Notes</button>
       <button class="tab" data-tab="data">Data</button>
     </div>
 
@@ -654,6 +655,20 @@
       </div>
     </div>
 
+    <div id="notesTab" class="tab-content">
+      <div class="block">
+        <label for="noteInput">Add Note</label>
+        <textarea id="noteInput" placeholder="Write a note..." rows="3" style="width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 10px; font-size: 16px; resize: vertical; margin-bottom: 10px;"></textarea>
+        <button id="addNoteBtn">Add Note</button>
+        <div class="hint">You can press Enter in the field.</div>
+      </div>
+      <div class="block">
+        <h2>My Notes</h2>
+        <ul id="notesList"></ul>
+        <p id="notesEmptyMessage" class="empty">No notes yet.</p>
+      </div>
+    </div>
+
     <div id="dataTab" class="tab-content">
       <div class="block">
         <h2>Clean Old Data</h2>
@@ -718,17 +733,27 @@
           dailyLimit: 2000,
           days: {},
           products: [],
-          statisticsStartDate: null
+          statisticsStartDate: null,
+          notes: []
         };
       }
 
       try {
         const parsed = JSON.parse(raw);
+        let notes = parsed.notes;
+        if (Array.isArray(notes)) {
+          // ok
+        } else if (typeof notes === "string" && notes) {
+          notes = [{ text: notes, createdAt: Date.now() }];
+        } else {
+          notes = [];
+        }
         const data = {
           dailyLimit: parsed.dailyLimit ?? 2000,
           days: parsed.days ?? {},
           products: parsed.products ?? [],
-          statisticsStartDate: parsed.statisticsStartDate ?? null
+          statisticsStartDate: parsed.statisticsStartDate ?? null,
+          notes: notes
         };
         cleanOldData(data);
         if (Object.keys(data.days).length !== Object.keys(parsed.days ?? {}).length) {
@@ -740,7 +765,8 @@
           dailyLimit: 2000,
           days: {},
           products: [],
-          statisticsStartDate: null
+          statisticsStartDate: null,
+          notes: []
         };
       }
     }
@@ -1595,6 +1621,8 @@
       } else if (tabName === "edit") {
         updateDaySelect();
         renderEdit();
+      } else if (tabName === "notes") {
+        renderNotes();
       } else if (tabName === "data") {
         // Data tab - no special rendering needed
       } else if (tabName === "today") {
@@ -1994,7 +2022,8 @@
             dailyLimit: importedData.dailyLimit,
             days: importedData.days,
             products: importedData.products,
-            statisticsStartDate: importedData.statisticsStartDate || null
+            statisticsStartDate: importedData.statisticsStartDate || null,
+            notes: Array.isArray(importedData.notes) ? importedData.notes : (typeof importedData.notes === "string" && importedData.notes ? [{ text: importedData.notes, createdAt: Date.now() }] : [])
           };
 
           localStorage.setItem(STORAGE_KEY, JSON.stringify(dataToSave));
@@ -2057,6 +2086,86 @@
       renderMonthlyStats();
       renderWeightChart();
     }
+
+    function renderNotes() {
+      const data = loadData();
+      const notesList = document.getElementById("notesList");
+      const emptyMessage = document.getElementById("notesEmptyMessage");
+      notesList.innerHTML = "";
+
+      if (!data.notes || data.notes.length === 0) {
+        emptyMessage.style.display = "block";
+      } else {
+        emptyMessage.style.display = "none";
+        [...data.notes].reverse().forEach((note, i) => {
+          const idx = data.notes.length - 1 - i;
+          const li = document.createElement("li");
+          li.style.display = "flex";
+          li.style.justifyContent = "space-between";
+          li.style.alignItems = "flex-start";
+          li.style.padding = "10px 0";
+          li.style.borderBottom = "1px solid #ececec";
+          li.style.gap = "10px";
+
+          const noteText = document.createElement("div");
+          noteText.style.flex = "1";
+          noteText.textContent = note.text;
+          noteText.style.whiteSpace = "pre-wrap";
+          noteText.style.wordBreak = "break-word";
+
+          const meta = document.createElement("div");
+          meta.style.display = "flex";
+          meta.style.flexDirection = "column";
+          meta.style.alignItems = "flex-end";
+          meta.style.gap = "4px";
+
+          const timeSpan = document.createElement("span");
+          timeSpan.style.fontSize = "12px";
+          timeSpan.style.color = "#666";
+          timeSpan.textContent = new Date(note.createdAt).toLocaleString("en-US", { dateStyle: "short", timeStyle: "short" });
+
+          const deleteBtn = document.createElement("button");
+          deleteBtn.className = "delete-btn";
+          deleteBtn.textContent = "Delete";
+          deleteBtn.style.padding = "4px 12px";
+          deleteBtn.onclick = () => deleteNote(idx);
+
+          meta.appendChild(timeSpan);
+          meta.appendChild(deleteBtn);
+          li.appendChild(noteText);
+          li.appendChild(meta);
+          notesList.appendChild(li);
+        });
+      }
+    }
+
+    function addNote() {
+      const input = document.getElementById("noteInput");
+      const text = input.value.trim();
+      if (!text) return;
+
+      const data = loadData();
+      if (!data.notes) data.notes = [];
+      data.notes.push({ text: text, createdAt: Date.now() });
+      saveData(data);
+      input.value = "";
+      renderNotes();
+    }
+
+    function deleteNote(index) {
+      const data = loadData();
+      data.notes.splice(index, 1);
+      saveData(data);
+      renderNotes();
+    }
+
+    document.getElementById("addNoteBtn").addEventListener("click", addNote);
+    document.getElementById("noteInput").addEventListener("keydown", function(event) {
+      if (event.key === "Enter" && !event.shiftKey) {
+        event.preventDefault();
+        addNote();
+      }
+    });
 
     document.getElementById("exportDataBtn").addEventListener("click", exportData);
     document.getElementById("importDataInput").addEventListener("change", importData);

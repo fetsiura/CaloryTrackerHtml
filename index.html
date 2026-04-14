@@ -331,7 +331,8 @@
     }
 
     .weight-bar-wrapper {
-      flex: 1;
+      flex: 1 1 0;
+      min-width: 0;
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -575,7 +576,7 @@
       </div>
 
       <div class="block chart-container">
-        <h2>Weight Tracking (Last 2 Months)</h2>
+        <h2>Weight Tracking (last 7 entries)</h2>
         <div id="weightChart"></div>
       </div>
     </div>
@@ -939,20 +940,16 @@
       return monthStart.toLocaleDateString("en-US", { month: "long", year: "numeric" });
     }
 
+    const WEIGHT_CHART_MAX_BARS = 7;
+
     function renderWeightChart() {
       const data = loadData();
       const container = document.getElementById("weightChart");
-      
-      // Get last 2 months of data
-      const twoMonthsAgo = new Date();
-      twoMonthsAgo.setMonth(twoMonthsAgo.getMonth() - 2);
-      const cutoffDate = new Date(twoMonthsAgo.getFullYear(), twoMonthsAgo.getMonth(), 1);
-      const cutoffKey = getDateKey(cutoffDate);
 
-      // Collect weight data
+      // Collect all weight entries (storage unchanged — only chart display is limited)
       const weightData = [];
       for (const dateKey in data.days) {
-        if (dateKey >= cutoffKey && data.days[dateKey].weight !== undefined) {
+        if (data.days[dateKey].weight !== undefined) {
           const date = new Date(dateKey + "T00:00:00");
           weightData.push({
             date: date,
@@ -962,24 +959,30 @@
         }
       }
 
-      // Sort by date
       weightData.sort((a, b) => a.dateKey.localeCompare(b.dateKey));
 
       if (weightData.length === 0) {
-        container.innerHTML = "<p class='weight-chart-empty'>No weight data available for the last 2 months.</p>";
+        container.innerHTML = "<p class='weight-chart-empty'>No weight data yet.</p>";
         return;
       }
 
-      // Calculate min and max weight for scaling
-      const weights = weightData.map(d => d.weight);
+      const totalCount = weightData.length;
+      const chartData = weightData.slice(-WEIGHT_CHART_MAX_BARS);
+
+      // Calculate min and max weight for scaling (from displayed bars only)
+      const weights = chartData.map(d => d.weight);
       const minWeight = Math.min(...weights);
       const maxWeight = Math.max(...weights);
       const weightRange = maxWeight - minWeight || 1; // Avoid division by zero
 
-      // Create chart HTML
-      let html = '<div class="weight-chart-container"><div class="weight-chart-bars">';
+      let html = "";
+      if (totalCount > WEIGHT_CHART_MAX_BARS) {
+        html += `<p class="hint" style="margin: 0 0 10px 0;">Showing ${WEIGHT_CHART_MAX_BARS} most recent of ${totalCount} entries.</p>`;
+      }
+
+      html += '<div class="weight-chart-container"><div class="weight-chart-bars">';
       
-      weightData.forEach(item => {
+      chartData.forEach(item => {
         const heightPercent = ((item.weight - minWeight) / weightRange) * 100;
         const dayLabel = item.date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
         
